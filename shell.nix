@@ -41,4 +41,4 @@ let
     '';
 
   };
-in mkShell { nativeBuildInputs = [ rustc-solana llvm-solana ]; }
+in mkShell { nativeBuildInputs = [ rustc-solana llvm-solana yarn nodejs ]; }
