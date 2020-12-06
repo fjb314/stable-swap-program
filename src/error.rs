@@ -67,6 +67,9 @@ pub enum SwapError {
     /// Unauthorized
     #[error("Account is not authorized to execute this instruction")]
     Unauthorized,
+    /// Unauthorized
+    #[error("Contract is paused")]
+    Paused,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

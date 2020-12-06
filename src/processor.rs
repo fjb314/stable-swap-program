@@ -247,6 +247,7 @@ impl Processor {
             admin_fee_account_a: *admin_fee_a_info.key,
             admin_fee_account_b: *admin_fee_b_info.key,
             fees,
+            is_paused: false,
         };
         SwapInfo::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -270,6 +271,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if token_swap.is_paused {
+            return Err(SwapError::Paused.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -365,6 +369,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if token_swap.is_paused {
+            return Err(SwapError::Paused.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -450,6 +457,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if token_swap.is_paused {
+            return Err(SwapError::Paused.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -574,6 +584,9 @@ impl Processor {
             return Err(SwapError::InvalidInput.into());
         }
         let token_swap = SwapInfo::unpack(&swap_info.data.borrow())?;
+        if token_swap.is_paused {
+            return Err(SwapError::Paused.into());
+        }
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -829,6 +842,9 @@ impl PrintProgramError for SwapError {
             SwapError::ConversionFailure => info!("Error: Conversion to or from u64 failed"),
             SwapError::Unauthorized => {
                 info!("Error: Account is not authorized to execute this instruction")
+            }
+            SwapError::Paused => {
+                info!("Error: Contract is paused")
             }
         }
     }

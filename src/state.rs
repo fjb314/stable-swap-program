@@ -43,6 +43,8 @@ pub struct SwapInfo {
     pub admin_fee_account_b: Pubkey,
     /// Fees
     pub fees: Fees,
+    /// If true, the token program is inactive.
+    pub is_paused: bool,
 }
 
 impl Sealed for SwapInfo {}
@@ -57,7 +59,7 @@ impl Pack for SwapInfo {
 
     /// Unpacks a byte buffer into a [SwapInfo](struct.SwapInfo.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 298];
+        let input = array_ref![input, 0, 299];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -71,7 +73,8 @@ impl Pack for SwapInfo {
             admin_fee_account_a,
             admin_fee_account_b,
             fees,
-        ) = array_refs![input, 1, 1, 8, 32, 32, 32, 32, 32, 32, 32, 64];
+            is_paused,
+        ) = array_refs![input, 1, 1, 8, 32, 32, 32, 32, 32, 32, 32, 64, 1];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -88,11 +91,16 @@ impl Pack for SwapInfo {
             admin_fee_account_a: Pubkey::new_from_array(*admin_fee_account_a),
             admin_fee_account_b: Pubkey::new_from_array(*admin_fee_account_b),
             fees: Fees::unpack_from_slice(fees)?,
+            is_paused: match is_paused {
+                [0] => false,
+                [1] => true,
+                _ => return Err(ProgramError::InvalidAccountData),
+            },
         })
     }
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 298];
+        let output = array_mut_ref![output, 0, 299];
         let (
             is_initialized,
             nonce,
@@ -105,7 +113,8 @@ impl Pack for SwapInfo {
             admin_fee_account_a,
             admin_fee_account_b,
             fees,
-        ) = mut_array_refs![output, 1, 1, 8, 32, 32, 32, 32, 32, 32, 32, 64];
+            is_paused,
+        ) = mut_array_refs![output, 1, 1, 8, 32, 32, 32, 32, 32, 32, 32, 64, 1];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         *amp_factor = self.amp_factor.to_le_bytes();
@@ -117,6 +126,7 @@ impl Pack for SwapInfo {
         admin_fee_account_a.copy_from_slice(self.admin_fee_account_a.as_ref());
         admin_fee_account_b.copy_from_slice(self.admin_fee_account_b.as_ref());
         self.fees.pack_into_slice(&mut fees[..]);
+        is_paused[0] = self.is_paused as u8;
     }
 }
 
@@ -174,6 +184,7 @@ mod tests {
             admin_fee_account_a,
             admin_fee_account_b,
             fees,
+            is_paused: false,
         };
 
         let mut packed = [0u8; SwapInfo::LEN];
@@ -200,6 +211,7 @@ mod tests {
         packed.extend_from_slice(&trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&withdraw_fee_denominator.to_le_bytes());
+        packed.push(1 as u8);
         let unpacked = SwapInfo::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 
